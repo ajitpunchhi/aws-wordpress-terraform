@@ -1,0 +1,140 @@
+name: Terraform CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.3.0
+
+    - name: Terraform Format
+      run: terraform fmt -check
+
+    - name: Terraform Init
+      run: terraform init -backend=false
+
+    - name: Terraform Validate
+      run: terraform validate
+
+  tfsec:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Run tfsec
+      uses: aquasecurity/tfsec-action@v1.0.0
+
+  examples:
+    name: Test Examples
+    runs-on: ubuntu-latest
+    needs: [validate, tfsec]
+    strategy:
+      fail-fast: false
+      matrix:
+        example:
+          - basic
+          - complete
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.3.0
+
+    - name: Terraform Init
+      run: |
+        cd examples/${{ matrix.example }}
+        terraform init -backend=false
+
+    - name: Terraform Validate
+      run: |
+        cd examples/${{ matrix.example }}
+        terraform validate
+
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    needs: [validate, tfsec, examples]
+    if: github.event_name == 'pull_request'
+    environment: development
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.3.0
+        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+    - name: Terraform Init
+      run: |
+        cd examples/complete
+        terraform init
+
+    - name: Terraform Plan
+      run: |
+        cd examples/complete
+        terraform plan
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        TF_VAR_rds_password: ${{ secrets.RDS_PASSWORD }}
+        TF_VAR_ssh_key_name: ${{ secrets.SSH_KEY_NAME }}
+
+  apply:
+    name: Apply
+    runs-on: ubuntu-latest
+    needs: [validate, tfsec, examples]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.3.0
+        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+    - name: Terraform Init
+      run: |
+        cd examples/complete
+        terraform init
+
+    - name: Terraform Plan
+      run: |
+        cd examples/complete
+        terraform plan -out=tfplan
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        TF_VAR_rds_password: ${{ secrets.RDS_PASSWORD }}
+        TF_VAR_ssh_key_name: ${{ secrets.SSH_KEY_NAME }}
+
+    - name: Terraform Apply
+      run: |
+        cd examples/complete
+        terraform apply tfplan
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
