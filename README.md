@@ -1,6 +1,4 @@
 # AWS WordPress Terraform
-
-[![Terraform CI/CD](https://github.com/yourusername/aws-wordpress-terraform/actions/workflows/terraform.yml/badge.svg)](https://github.com/yourusername/aws-wordpress-terraform/actions/workflows/terraform.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 A production-grade Terraform module for deploying scalable, secure, and highly available WordPress installations on AWS.
