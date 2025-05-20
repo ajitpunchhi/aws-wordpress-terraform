@@ -5,7 +5,8 @@ A production-grade Terraform module for deploying scalable, secure, and highly a
 
 ## Architecture
 
-![AWS WordPress Architecture](https://raw.githubusercontent.com/yourusername/aws-wordpress-terraform/main/docs/architecture.png)
+![wordpress-architecture](https://github.com/user-attachments/assets/ac209ec9-2194-41db-b6ce-6180ec189c3e)
+
 
 This Terraform module creates a fully-featured WordPress deployment with the following components:
 
